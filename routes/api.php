@@ -1,12 +1,24 @@
 <?php
 
+// Fichier: routes/api.php
+
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ServiceController; // 1. Importer le nouveau contrôleur
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController; // Importez le contrôleur
 
 // Route publique pour la connexion
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// ---- NOUVEAU CODE CI-DESSOUS ----
+
+// Routes protégées qui nécessitent une authentification
+Route::middleware('auth:sanctum')->group(function () {
+    // Cette route permet de vérifier qui est l'utilisateur connecté
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
+    // 2. Ajouter cette ligne magique
+    Route::apiResource('services', ServiceController::class);
+});
