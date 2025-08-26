@@ -21,4 +21,5 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 2. Ajouter cette ligne magique
     Route::apiResource('services', ServiceController::class);
+    Route::apiResource('agents', App\Http\Controllers\Api\AgentController::class);
 });
