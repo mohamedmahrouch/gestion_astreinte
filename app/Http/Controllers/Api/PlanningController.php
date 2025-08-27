@@ -3,19 +3,36 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agent;
+use App\Models\PeriodeAstreinte;
 use App\Models\Planning;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class PlanningController extends Controller
 {
+      use AuthorizesRequests;
     public function index(Request $request)
     {
-        // Permet de filtrer par période ou par agent
+
+        $this->authorize('viewAny', Planning::class);
+        
+        /** @var User $user */
+        $user = Auth::user();
         $query = Planning::with(['periodeAstreinte.service', 'agent', 'agentRemplacant', 'createdBy']);
 
+        // Si c'est une secrétaire, on filtre sur ses services
+        if ($user->role_type === 'secretaire') {
+            $serviceIds = $user->servicesResponsable()->pluck('id');
+            $query->whereHas('periodeAstreinte', function ($q) use ($serviceIds) {
+                $q->whereIn('service_id', $serviceIds);
+            });
+        }
+        
+        // ... votre logique de filtre existante ...
         if ($request->has('periode_astreinte_id')) {
             $query->where('periode_astreinte_id', $request->periode_astreinte_id);
         }
@@ -29,14 +46,11 @@ class PlanningController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', Planning::class);
+
         $validator = Validator::make($request->all(), [
-            'periode_astreinte_id' => [
-                'required',
-                'exists:periodes_astreinte,id',
-                // Règle d'unicité pour empêcher le doublon agent/période
-                Rule::unique('plannings')->where(function ($query) use ($request) {
-                    return $query->where('agent_id', $request->agent_id);
-                }),
+            'periode_astreinte_id' => ['required','exists:periodes_astreinte,id',
+                Rule::unique('plannings')->where(fn ($query) => $query->where('agent_id', $request->agent_id)),
             ],
             'agent_id' => 'required|exists:agents,id',
         ]);
@@ -45,8 +59,19 @@ class PlanningController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        /** @var User $user */
+        $user = Auth::user();
+        // Vérification métier : la secrétaire peut-elle créer un planning pour cette période ?
+        if ($user->role_type === 'secretaire') {
+            $periode = PeriodeAstreinte::find($request->periode_astreinte_id);
+            $serviceIds = $user->servicesResponsable()->pluck('id');
+            if (!$serviceIds->contains($periode->service_id)) {
+                return response()->json(['message' => 'Action non autorisée. Vous ne pouvez créer des affectations que pour vos services.'], 403);
+            }
+        }
+
         $validatedData = $validator->validated();
-        $validatedData['created_by'] = Auth::id();
+        $validatedData['created_by'] = $user->id;
         $validatedData['statut'] = 'planifie';
 
         $planning = Planning::create($validatedData);
@@ -56,25 +81,33 @@ class PlanningController extends Controller
 
     public function show(Planning $planning)
     {
+        $this->authorize('view', $planning);
         return response()->json($planning->load(['periodeAstreinte.service', 'agent', 'agentRemplacant', 'createdBy']));
     }
 
     public function update(Request $request, Planning $planning)
     {
-        // Mise à jour principale: remplacer un agent ou changer le statut
+        $this->authorize('update', $planning);
+
         $validator = Validator::make($request->all(), [
             'agent_remplacant_id' => 'nullable|exists:agents,id|different:agent_id',
             'statut' => 'sometimes|required|in:planifie,confirme,en_cours,termine,annule',
             'commentaire_admin' => 'nullable|string'
         ]);
-
+        
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
         
-        $validatedData = $validator->validated();
+        // Vérification métier : l'agent remplaçant doit être du même service
+        if ($request->has('agent_remplacant_id')) {
+            $agentRemplacant = Agent::find($request->agent_remplacant_id);
+            if ($agentRemplacant->service_id !== $planning->agent->service_id) {
+                return response()->json(['message' => 'L\'agent remplaçant doit appartenir au même service que l\'agent initial.'], 422);
+            }
+        }
         
-        // Logique de remplacement
+        $validatedData = $validator->validated();
         if ($request->has('agent_remplacant_id')) {
             $validatedData['secretaire_remplacant_id'] = Auth::id();
         }
@@ -86,6 +119,7 @@ class PlanningController extends Controller
 
     public function destroy(Planning $planning)
     {
+        $this->authorize('delete', $planning);
         $planning->delete();
         return response()->noContent();
     }

@@ -5,45 +5,35 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Service;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator; // Important pour la validation
-
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class ServiceController extends Controller
 {
+      use AuthorizesRequests;
     /**
-     * @OA\Get(
-     *     path="/api/services",
-     *     summary="Récupérer tous les services",
-     *     @OA\Response(response="200", description="Liste de tous les services")
-     * )
+     * Affiche une liste paginée des services.
+     * Accessible à tous les utilisateurs authentifiés.
      */
     public function index()
     {
-        // Récupère les services avec les infos de la secrétaire.
-        // paginate() est mieux que get() pour de longues listes.
-        $services = Service::with('secretaireResponsable')->paginate(15);
+        // La policy autorise tout utilisateur authentifié à voir la liste.
+        $this->authorize('viewAny', Service::class);
 
+        $services = Service::with('secretaireResponsable')->paginate(15);
         return response()->json($services);
     }
 
     /**
-     * @OA\Post(
-     *     path="/api/services",
-     *     summary="Créer un nouveau service",
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="nom", type="string", example="Service Informatique"),
-     *             @OA\Property(property="code_service", type="string", example="INFO")
-     *         )
-     *     ),
-     *     @OA\Response(response="201", description="Service créé avec succès"),
-     *     @OA\Response(response="422", description="Erreur de validation")
-     * )
+     * Crée un nouveau service.
+     * Uniquement accessible aux administrateurs.
      */
     public function store(Request $request)
     {
-        // 1. Validation des données entrantes
+        // 1. Autorisation : L'utilisateur a-t-il le droit de créer un service ?
+        // La policy ne l'autorisera que pour un admin.
+        $this->authorize('create', Service::class);
+
+        // 2. Validation des données
         $validator = Validator::make($request->all(), [
             'nom' => 'required|string|max:100',
             'code_service' => 'required|string|max:20|unique:services,code_service',
@@ -57,59 +47,34 @@ class ServiceController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // 2. Création du service
+        // 3. Création
         $service = Service::create($validator->validated());
 
-        // 3. Retourner le service créé avec un code 201 (Created)
         return response()->json($service, 201);
     }
 
     /**
-     * @OA\Get(
-     *     path="/api/services/{id}",
-     *     summary="Récupérer un service spécifique",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(response="200", description="Détails du service"),
-     *     @OA\Response(response="404", description="Service non trouvé")
-     * )
+     * Affiche les détails d'un service spécifique.
+     * Accessible à tous les utilisateurs authentifiés.
      */
     public function show(Service $service)
     {
-        // Laravel fait le findOrFail() pour nous grâce au "Route Model Binding"
-        // On charge la relation pour l'inclure dans la réponse
+        // La policy autorise tout utilisateur authentifié à voir un service.
+        $this->authorize('view', $service);
+
         return response()->json($service->load('secretaireResponsable'));
     }
 
     /**
-     * @OA\Put(
-     *     path="/api/services/{id}",
-     *     summary="Mettre à jour un service",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="nom", type="string", example="Nouveau Nom du Service")
-     *         )
-     *     ),
-     *     @OA\Response(response="200", description="Service mis à jour"),
-     *     @OA\Response(response="422", description="Erreur de validation"),
-     *     @OA\Response(response="404", description="Service non trouvé")
-     * )
+     * Met à jour un service existant.
+     * Uniquement accessible aux administrateurs.
      */
     public function update(Request $request, Service $service)
     {
-        // Validation (unique ignore l'enregistrement actuel)
+        // 1. Autorisation : L'utilisateur a-t-il le droit de modifier CE service ?
+        $this->authorize('update', $service);
+
+        // 2. Validation
         $validator = Validator::make($request->all(), [
             'nom' => 'sometimes|required|string|max:100',
             'code_service' => 'sometimes|required|string|max:20|unique:services,code_service,' . $service->id,
@@ -124,32 +89,24 @@ class ServiceController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Mise à jour du service
+        // 3. Mise à jour
         $service->update($validator->validated());
 
-        // Retourner le service mis à jour
         return response()->json($service);
     }
 
     /**
-     * @OA\Delete(
-     *     path="/api/services/{id}",
-     *     summary="Supprimer un service",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(response="204", description="Service supprimé (pas de contenu en retour)"),
-     *     @OA\Response(response="404", description="Service non trouvé")
-     * )
+     * Supprime un service.
+     * Uniquement accessible aux administrateurs.
      */
     public function destroy(Service $service)
     {
+        // 1. Autorisation : L'utilisateur a-t-il le droit de supprimer CE service ?
+        $this->authorize('delete', $service);
+
+        // 2. Suppression
         $service->delete();
 
-        // Retourner une réponse vide avec le code 204 (No Content)
         return response()->noContent();
     }
 }
