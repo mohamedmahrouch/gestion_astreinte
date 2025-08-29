@@ -7,9 +7,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+
 
 class User extends Authenticatable
 {
+    protected $appends = ['is_available_for_assignment'];
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
@@ -63,4 +66,13 @@ class User extends Authenticatable
     {
         return $this->hasMany(Agent::class, 'created_by');
     }
+    /**
+ * Accessor pour vérifier si une secrétaire est déjà assignée à un service.
+ */
+protected function isAvailableForAssignment(): Attribute
+{
+    return Attribute::make(
+        get: fn () => $this->role_type === 'secretaire' && $this->servicesResponsable()->count() === 0,
+    );
+}
 }
