@@ -81,4 +81,9 @@ class UserController extends Controller
         $user->delete();
         return response()->noContent();
     }
+    public function listSecretaries()
+{
+    $secretaries = User::where('role_type', 'secretaire')->get();
+    return response()->json($secretaries);
+}
 }

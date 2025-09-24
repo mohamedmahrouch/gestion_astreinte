@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('is.admin')->group(function () {
         Route::post('/plannings/generer', [GenerationPlanningController::class, 'generer']);
+        Route::get('/users/secretaries', [UserController::class, 'listSecretaries']);
         Route::apiResource('users', UserController::class);
     });
 
