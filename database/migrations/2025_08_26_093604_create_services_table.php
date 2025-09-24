@@ -25,11 +25,7 @@ public function up(): void
         $table->string('code_service', 20)->unique();
 
         // SQL: secretaire_responsable_id INT UNSIGNED NULL
-        // + FOREIGN KEY ... ON DELETE SET NULL
-        $table->foreignId('secretaire_responsable_id')
-              ->nullable()
-              ->constrained('users')
-              ->onDelete('set null');
+       
 
         // SQL: is_active BOOLEAN DEFAULT TRUE
         $table->boolean('is_active')->default(true);

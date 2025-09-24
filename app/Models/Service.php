@@ -42,4 +42,10 @@ class Service extends Model
     {
         return $this->hasMany(PeriodeAstreinte::class);
     }
+    //last edit for one to many many to many (abt secr and serv)
+    public function secretaries(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+    return $this->belongsToMany(User::class, 'service_user');
+    }
+
 }

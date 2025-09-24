@@ -63,4 +63,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Agent::class, 'created_by');
     }
+
+    // editing services
+    public function services(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'service_user');
+    }
 }
