@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // <-- 1. IMPORT THE TRAIT
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    use AuthorizesRequests; // <-- 2. USE THE TRAIT
+
     public function index()
     {
         return response()->json(User::paginate(15));
@@ -74,6 +77,7 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        // This is a special authorization check that does not require a policy
         if ($user->id === auth()->id()) {
             return response()->json(['message' => 'Vous ne pouvez pas supprimer votre propre compte.'], 403);
         }
@@ -81,9 +85,10 @@ class UserController extends Controller
         $user->delete();
         return response()->noContent();
     }
+
     public function listSecretaries()
-{
-    $secretaries = User::where('role_type', 'secretaire')->get();
-    return response()->json($secretaries);
-}
+    {
+        $secretaries = User::where('role_type', 'secretaire')->get();
+        return response()->json($secretaries);
+    }
 }
