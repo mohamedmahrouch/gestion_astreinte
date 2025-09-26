@@ -24,8 +24,8 @@ class PlanningPolicy
     {
         // La secrétaire peut voir un planning si la période d'astreinte associée
         // appartient à l'un de ses services.
-        $serviceIds = $user->servicesResponsable()->pluck('id');
-        return $serviceIds->contains($planning->periodeAstreinte->service_id);
+        $serviceIds = $user->services()->pluck('services.id');
+        return $user->services()->where('services.id', $planning->periodeAstreinte->service_id)->exists();
     }
 
 

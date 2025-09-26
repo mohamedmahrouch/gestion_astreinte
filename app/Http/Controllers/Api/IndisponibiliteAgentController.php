@@ -44,7 +44,7 @@ class IndisponibiliteAgentController extends Controller
         
         if ($user->role_type === 'secretaire') {
             $agent = Agent::find($request->agent_id);
-            $serviceIds = $user->servicesResponsable()->pluck('id');
+            $serviceIds = $user->services()->pluck('services.id');
             if (!$serviceIds->contains($agent->service_id)) {
                 return response()->json(['message' => 'Action non autorisée. Cet agent ne fait pas partie de vos services.'], 403);
             }

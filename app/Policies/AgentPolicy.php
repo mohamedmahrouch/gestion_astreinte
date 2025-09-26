@@ -25,8 +25,8 @@ class AgentPolicy
     public function view(User $user, Agent $agent): bool
     {
         // On doit récupérer les ID des services gérés par la secrétaire
-        $serviceIds = $user->servicesResponsable()->pluck('id');
-        return $serviceIds->contains($agent->service_id);
+        $serviceIds = $user->services()->pluck('services.id');
+        return $user->services()->where('services.id', $agent->service_id)->exists();
     }
     
     // Une secrétaire peut créer un agent si elle le met dans son service

@@ -36,8 +36,8 @@ class PeriodeAstreintePolicy
      */
     public function view(User $user, PeriodeAstreinte $periodeAstreinte): bool
     {
-        $serviceIds = $user->servicesResponsable()->pluck('id');
-        return $serviceIds->contains($periodeAstreinte->service_id);
+        $serviceIds = $user->services()->pluck('service.id');
+        return $user->services()->where('services.id', $periodeAstreinte->service_id)->exists();
     }
 
     /**

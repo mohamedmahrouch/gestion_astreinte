@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PeriodeAstreinte;
-use App\Models\Service; // NÉCESSAIRE pour les vérifications
-use App\Models\User;   // NÉCESSAIRE pour typer l'utilisateur
+use App\Models\Service; // pour les vérifications
+use App\Models\User;   // typer l'utilisateur
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -28,7 +28,7 @@ class PeriodeAstreinteController extends Controller
 
         // Si l'utilisateur est une secrétaire, on force le filtre sur ses services
         if ($user->role_type === 'secretaire') {
-            $serviceIds = $user->servicesResponsable()->pluck('id');
+            $serviceIds = $user->services()->pluck('services.id');
             $query->whereIn('service_id', $serviceIds);
         }
 

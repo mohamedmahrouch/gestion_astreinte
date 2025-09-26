@@ -29,7 +29,7 @@ class AgentController extends Controller
 
         // 2. Logique métier : Si l'utilisateur est une secrétaire, on restreint la requête.
         if ($user->role_type === 'secretaire') {
-            $serviceIds = $user->servicesResponsable()->pluck('id');
+            $serviceIds = $user->services()->pluck('services.id');
             $query->whereIn('service_id', $serviceIds);
         }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Agent;
 use App\Models\PeriodeAstreinte;
 use App\Models\Planning;
@@ -11,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
 class PlanningController extends Controller
 {
       use AuthorizesRequests;
@@ -25,10 +26,12 @@ class PlanningController extends Controller
         $query = Planning::with(['periodeAstreinte.service', 'agent', 'agentRemplacant', 'createdBy']);
 
         // Si c'est une secrétaire, on filtre sur ses services
-        if ($user->role_type === 'secretaire') {
-            $serviceIds = $user->servicesResponsable()->pluck('id');
+        if ($user instanceof User && $user->role_type === 'secretaire') {            
+            // $serviceIds = $user->servicesResponsable()->pluck('id');
+            $serviceIds = $user->services()->pluck('services.id');
             $query->whereHas('periodeAstreinte', function ($q) use ($serviceIds) {
                 $q->whereIn('service_id', $serviceIds);
+
             });
         }
         
@@ -64,7 +67,7 @@ class PlanningController extends Controller
         // Vérification métier : la secrétaire peut-elle créer un planning pour cette période ?
         if ($user->role_type === 'secretaire') {
             $periode = PeriodeAstreinte::find($request->periode_astreinte_id);
-            $serviceIds = $user->servicesResponsable()->pluck('id');
+            $serviceIds = $user->services()->pluck('id');
             if (!$serviceIds->contains($periode->service_id)) {
                 return response()->json(['message' => 'Action non autorisée. Vous ne pouvez créer des affectations que pour vos services.'], 403);
             }
